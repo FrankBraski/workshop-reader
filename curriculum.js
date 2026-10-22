@@ -26,7 +26,7 @@ window.CURRICULUM = {
         { g: 'a', key: 'ax',   e: '🪓' },
         { g: 'e', key: 'egg',  e: '🥚' },
         { g: 'i', key: 'inch', e: '📏' },
-        { g: 'o', key: 'on',   e: '🔛' },
+        { g: 'o', key: 'ox',   e: '🐂' },
         { g: 'u', key: 'up',   e: '⬆️' }
       ]
     },
@@ -108,7 +108,7 @@ window.CURRICULUM = {
     {
       id: 6, kind: 'words', name: 'Short o, u, and e', cert: 'Apprentice Reader II',
       project: 'egg', part: { name: 'Conveyor', e: '🛤️', note: 'A belt moves eggs from the hens to the bin. Egg harvester done!' },
-      pattern: 'Three more short vowels: o as in on, u as in up, e as in egg. Same trick: say each sound, then blend.',
+      pattern: 'Three more short vowels: o as in ox, u as in up, e as in egg. Same trick: say each sound, then blend.',
       tricky: ['to', 'of', 'and', 'put', 'said'],
       words: [
         { w: 'box', e: '📦' }, { w: 'hot', e: '🔥' }, { w: 'log', e: '🪵' }, { w: 'fox', e: '🦊' },
@@ -423,7 +423,7 @@ window.CURRICULUM = {
   // Keyword for each sound chunk, used by the free Decoder tool.
   // Tapping a chunk says the keyword so he can hear the sound in a word he knows.
   hints: {
-    a: 'ax', e: 'egg', i: 'inch', o: 'on', u: 'up',
+    a: 'ax', e: 'egg', i: 'inch', o: 'ox', u: 'up',
     a_e: 'gate', e_e: 'these', i_e: 'wire', o_e: 'hose', u_e: 'tube',
     b: 'battery', c: 'car', d: 'dig', f: 'fire', g: 'gear', h: 'hammer', j: 'jet', k: 'key',
     l: 'lamp', m: 'magnet', n: 'nut', p: 'plug', r: 'robot', s: 'saw', t: 'tractor', v: 'van',

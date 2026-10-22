@@ -769,14 +769,25 @@
 
   // Teach Your Droid: the droid reads, he judges, and he reprograms it when it's wrong
   const sayOf = x => { for (const l of LEVELS) for (const w of (l.words || [])) if (w.w === x) return w.say || w.w; return x; };
-  const droidLine = it => it.s ? `${it.guess.key}. Does ${it.guess.key} start with this letter?` : `This word is... ${sayOf(it.guess)}.`;
+  const droidLine = it => it.s ? `${it.guess.key}. I think ${it.guess.key} starts with this letter.` : `This word is... ${sayOf(it.guess)}.`;
 
   function renderTeach(it) {
     const name = esc(droidName());
-    const shown = it.s ? it.s.g : it.w.w;
     let below = '';
+    // Letter levels: the droid holds up a part and claims it starts with the letter.
+    // Word levels: the droid reads the word aloud (what it says is hidden on purpose).
+    const shownHTML = it.s
+      ? `<div class="claim">
+          <div class="claim-part">${emo(it.guess.e, 'lg')}<button class="btn mini" data-act="droid-again">🔊 Hear it</button></div>
+          <div class="claim-says">starts with</div>
+          <div class="big-letter huge">${esc(it.s.g)}</div>
+        </div>`
+      : `<div class="big-word">${esc(it.w.w)}</div>`;
+    const bubble = it.s
+      ? `<b>${name}</b> says this part starts with the letter <b class="accent">${esc(it.s.g)}</b>.`
+      : `<b>${name}</b> read this word out loud.`;
     if (R.state === 'ask') {
-      below = `<p class="ask">Did ${name} get it right?</p>
+      below = `<p class="ask">${it.s ? `Say the part's name. Does it start with the <b>${esc(it.s.g)}</b> sound?` : `Read the word yourself. Did ${name} say it right?`}</p>
         <div class="choices judge">
           <button class="choice judge-yes" data-act="choose" data-i="0"><span class="kbd">1</span>✅ Right</button>
           <button class="choice judge-no" data-act="choose" data-i="1"><span class="kbd">2</span>❌ Wrong</button>
@@ -790,15 +801,16 @@
     } else {
       below = `<div class="fb ${R.state === 'wrong' ? 'wrong' : 'right'}">${esc(R.msg || '')}
         ${R.state === 'wrong' && it.w ? decoderHTML(it.w) : ''}
+        ${it.s && !it.right ? `<div class="claim-fix">${emo(it.s.e, 'md')} <b>${esc(it.s.key)}</b> starts with <b>${esc(it.s.g)}</b></div>` : ''}
         <button class="btn primary" data-act="next" id="nextbtn">Next ▶</button></div>`;
     }
     frame(`<div class="card center teach">
       <div class="droid-row">
         ${droidSVG('sm talking')}
-        <div class="bubble"><b>${name}</b> is reading…
+        <div class="bubble"><span>${bubble}</span>
           <button class="btn mini" data-act="droid-again">🔊 Hear ${name} again</button></div>
       </div>
-      <div class="${it.s ? 'big-letter huge' : 'big-word'}">${esc(shown)}</div>
+      ${shownHTML}
       ${below}
     </div>`);
     if (R.state === 'ask') droidSay(droidLine(it));
