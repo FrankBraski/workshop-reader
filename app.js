@@ -104,7 +104,7 @@
   // .w elements (from readable()), in the same order as the words in `text`;
   // an element with no .w inside is highlighted as a whole.
   let hlToken = 0;
-  function sayHL(el, text, rate) {
+  function sayHL(el, text, rate, pitch) {
     const my = ++hlToken;
     document.querySelectorAll('.hl').forEach(x => x.classList.remove('hl'));
     const words = !el ? [] : el.querySelectorAll('.w').length ? [...el.querySelectorAll('.w')] : [el];
@@ -125,7 +125,7 @@
       mark(i);
       timer = setTimeout(() => step(i + 1), (220 + 65 * toks[i].len) / rate);
     };
-    return say(text, rate, 1, {
+    return say(text, rate, pitch || 1, {
       onstart: () => { mark(0); timer = setTimeout(() => step(1), (500 + 65 * (toks[0] ? toks[0].len : 0)) / rate); },
       onboundary: e => {
         if (e.name && e.name !== 'word') return;
@@ -138,6 +138,21 @@
       onend: () => { clearTimeout(timer); if (my === hlToken) words.forEach(w => w.classList.remove('hl')); }
     });
   }
+
+  // Speak several [target, text, voice] parts in order, highlighting each target.
+  // target: element or CSS selector (null = no highlight); voice 'droid' = droid voice.
+  // Stops early if something else starts talking.
+  async function talk(parts) {
+    const base = hlToken;
+    for (let k = 0; k < parts.length; k++) {
+      if (hlToken !== base + k) return;
+      const [t, text, voice] = parts[k];
+      const el = typeof t === 'string' ? document.querySelector(t) : t;
+      await sayHL(el, text, voice === 'droid' ? 0.95 : 0.85, voice === 'droid' ? 1.6 : 1);
+    }
+  }
+  // Single letters are spoken in capitals ("G") so the voice says the letter, not "uh".
+  const speakable = text => text.replace(/(^|\s)([a-z])(?=[.,!?]?(\s|$))/g, (m, p, l) => p + l.toUpperCase());
 
   // Wrap each word so sayHL can highlight it.
   const readable = text => String(text).split(/(\s+)/).map(t => /^\s*$/.test(t) ? t : `<span class="w">${esc(t)}</span>`).join('');
@@ -411,7 +426,7 @@
     R = {
       level, key, items, i: 0, correct: 0, scored: 0, missed: [], radio: 0, decoder: 0,
       soloNew: 0, t0: Date.now(), state: 'ask', usedRadio: false, typed: '',
-      spoken: 0, msg: '', listening: false
+      spoken: 0, msg: '', listening: false, fb: null, fbNew: false, prompted: false
     };
     renderItem();
   }
@@ -464,6 +479,9 @@
     R.usedRadio = false;
     R.typed = '';
     R.msg = '';
+    R.fb = null;
+    R.fbNew = false;
+    R.prompted = false;
     if (R.i >= R.items.length) return finishRound();
     renderItem();
   }
@@ -637,36 +655,68 @@
 
   function renderItem() {
     const it = R.items[R.i];
-    if (R.key === 'sound') return renderSound(it);
-    if (R.key === 'letter') return renderLetter(it);
-    if (R.key === 'spot') return renderSpot(it);
-    if (R.key === 'type') return renderType(it);
-    if (R.key === 'pick') return renderPick(it);
-    if (R.key === 'teach') return renderTeach(it);
-    if (it.sentence) return renderSentence(it);
-    return renderQuestion(it);
+    if (R.key === 'sound') renderSound(it);
+    else if (R.key === 'letter') renderLetter(it);
+    else if (R.key === 'spot') renderSpot(it);
+    else if (R.key === 'type') renderType(it);
+    else if (R.key === 'pick') renderPick(it);
+    else if (R.key === 'teach') renderTeach(it);
+    else if (it.sentence) renderSentence(it);
+    else renderQuestion(it);
+    // Speak new feedback once (highlighted), or the prompt the first time an item appears.
+    if (R.fb && R.fbNew) {
+      R.fbNew = false;
+      talk([['#fb-text', speakable(R.fb.text), R.fb.voice]]);
+    } else if (R.state === 'ask' && !R.prompted) {
+      R.prompted = true;
+      talk(promptParts(it));
+    }
   }
 
-  function soundPrompt(s) {
-    return `${s.key}. What letter makes the ${s.pos === 'end' ? 'last' : 'first'} sound in ${s.key}?`;
+  // What gets read aloud when an item first appears (and on "Hear it again").
+  function promptParts(it) {
+    if (R.key === 'sound') return [['#pic-main', it.s.key], ['#ask-text', askSound(it.s)]];
+    if (R.key === 'letter') return [['#ask-text', 'Which part starts with this sound?']];
+    if (R.key === 'spot' || R.key === 'type') return [[null, it.w.say || it.w.w]];
+    if (R.key === 'teach') {
+      if (it.s) return [['#claim-pic', it.guess.key, 'droid'], ['#bubble-text', speakable(teachBubble(it)), 'droid']];
+      return [['.big-word', `This word is... ${sayOf(it.guess)}.`, 'droid']];
+    }
+    return [];
   }
-  function feedbackHTML() {
-    if (R.state === 'right') return `<div class="fb right">✅ Yes! <button class="btn primary" data-act="next" id="nextbtn">Next ▶</button></div>`;
-    return '';
+
+  // Feedback: set it, then renderItem() shows it and reads it aloud with highlighting.
+  // pics: [[soundOrWord, isCorrect], ...] shown under the message.
+  function setFb(kind, text, opts) {
+    R.fb = Object.assign({ kind, text }, opts || {});
+    R.fbNew = true;
   }
+  function fbHTML(withNext) {
+    const f = R.fb;
+    if (!f) return '';
+    const icon = f.kind === 'wrong' ? '❌' : '✅';
+    const pics = f.pics ? `<div class="fb-pics">${f.pics.map(([s, ok]) =>
+      `<span class="fb-pic ${ok ? 'ok' : 'no'}">${emo(s.e, 'md')}<small>${ok ? '✅' : '❌'} ${esc(s.key || s.w)}</small></span>`).join('')}</div>` : '';
+    return `<div class="fb ${f.kind}">
+      <p class="fb-line"><span class="fb-icon">${icon}</span> <span id="fb-text">${readable(f.text)}</span></p>
+      ${pics}${f.extra || ''}${f.tip ? `<p class="tip">${esc(f.tip)}</p>` : ''}
+      ${withNext === false ? '' : '<button class="btn primary" data-act="next" id="nextbtn">Next ▶</button>'}
+    </div>`;
+  }
+  const rel = s => s.pos === 'end' ? 'ends with' : 'starts with';
+  const askSound = s => `What letter makes the ${s.pos === 'end' ? 'last' : 'first'} sound in this part?`;
+  const replayBtn = label => `<button class="btn speak" data-act="replay">🔊 ${label || 'Hear it again'}</button>`;
 
   // Sound Check: hear keyword, type the letter
   function renderSound(it) {
     const s = it.s;
-    const copy = R.state === 'copy';
     frame(`<div class="card center">
-      ${emo(s.e, 'xl')}
-      <p class="ask">Which letter makes the <b>${s.pos === 'end' ? 'LAST' : 'FIRST'}</b> sound?</p>
-      ${speakBtn(soundPrompt(s), 'Hear it again')}
-      ${copy ? `<p class="copy">That sound is spelled <span class="big-letter">${esc(s.g)}</span>. Type <b>${esc(s.g)}</b> to keep going.</p>` : ''}
-      ${R.state === 'right' ? feedbackHTML() : `<form data-act="submit" class="typeform"><input id="answer" class="answer short" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="3"><button class="btn primary">Check</button></form>`}
+      <span id="pic-main" class="pic-main">${emo(s.e, 'xl')}</span>
+      <p class="ask" id="ask-text">${readable(askSound(s))}</p>
+      ${replayBtn()}
+      ${R.state === 'copy' ? fbHTML(false) : ''}
+      ${R.state === 'right' ? fbHTML() : `<form data-act="submit" class="typeform"><input id="answer" class="answer short" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="3"><button class="btn primary">Check</button></form>`}
     </div>`);
-    if (R.state === 'ask') say(soundPrompt(s));
   }
   function checkSound(val) {
     const s = R.items[R.i].s;
@@ -678,27 +728,26 @@
     grade(ok, true);
     if (ok) {
       R.state = 'right';
-      renderItem();
-      say(`Yes! ${s.key}. The letter ${s.g.toUpperCase()}.`);
+      setFb('right', `Yes! ${s.key} ${rel(s)} ${s.g}.`);
     } else {
       R.state = 'copy';
-      renderItem();
-      say(`${s.key} uses the letter ${s.g.toUpperCase()}.`);
+      setFb('wrong', `${s.key} ${rel(s)} ${s.g}. Type ${s.g} to keep going.`, { extra: `<div class="big-letter huge">${esc(s.g)}</div>` });
     }
+    renderItem();
   }
 
   // Letter Match: see the letter, pick the picture
   function renderLetter(it) {
     frame(`<div class="card center">
       <div class="big-letter huge">${esc(it.s.g)}</div>
-      <p class="ask">Which part starts with this sound?</p>
+      <p class="ask" id="ask-text">${readable('Which part starts with this sound?')}</p>
       <div class="choices pics">${it.options.map((o, i) => `
         <div class="pic-wrap">
           <button class="choice pic ${R.state !== 'ask' && o === it.s ? 'is-right' : ''} ${R.state === 'wrong' && o === R.picked ? 'is-wrong' : ''}" data-act="choose" data-i="${i}" ${R.state !== 'ask' ? 'disabled' : ''}>
             <span class="kbd">${i + 1}</span>${emo(o.e, 'lg')}${R.state !== 'ask' ? `<small>${esc(o.key)}</small>` : ''}</button>
-          <button class="btn mini" data-act="say" data-text="${esc(o.key)}" title="Hear its name">🔊</button>
+          <button class="btn mini" data-act="say" data-text="${esc(o.key)}" data-target='.choice[data-i="${i}"]' title="Hear its name">🔊</button>
         </div>`).join('')}</div>
-      ${R.state === 'ask' ? '<p class="tip">Not sure what a picture is? Tap 🔊 to hear its name.</p>' : `<div class="fb ${R.state === 'right' ? 'right' : 'wrong'}">${R.state === 'right' ? '✅ Yes!' : '❌ Not that one.'} <b>${esc(it.s.key)}</b> starts with <b>${esc(it.s.g)}</b>. <button class="btn primary" data-act="next" id="nextbtn">Next ▶</button></div>`}
+      ${R.state === 'ask' ? '<p class="tip">Not sure what a picture is? Tap 🔊 to hear its name.</p>' : fbHTML()}
     </div>`);
   }
 
@@ -707,12 +756,11 @@
     const w = it.w;
     frame(`<div class="card center">
       <p class="ask">Listen. Which one did you hear?</p>
-      ${speakBtn(w.say || w.w, 'Hear it again')}
+      ${replayBtn()}
       <div class="choices words">${it.options.map((o, i) => `
         <button class="choice word ${R.state !== 'ask' && o === w.w ? 'is-right' : ''} ${R.state === 'wrong' && o === R.picked ? 'is-wrong' : ''}" data-act="choose" data-i="${i}" ${R.state !== 'ask' ? 'disabled' : ''}><span class="kbd">${i + 1}</span>${esc(o)}</button>`).join('')}</div>
-      ${R.state === 'ask' ? '' : `<div class="fb ${R.state}">${R.state === 'right' ? '✅ Yes!' : '❌ Close!'} ${R.state === 'wrong' ? decoderHTML(w) : ''}<button class="btn primary" data-act="next" id="nextbtn">Next ▶</button></div>`}
+      ${R.state === 'ask' ? '' : fbHTML()}
     </div>`);
-    if (R.state === 'ask') say(w.say || w.w);
   }
 
   // Typing Bay: hear a word, type it
@@ -722,12 +770,11 @@
     const len = w.w.replace(/\s/g, '').length;
     frame(`<div class="card center">
       <p class="ask">Type the word you hear. Say each sound as you type it.</p>
-      ${speakBtn(w.say || w.w, 'Hear it again')}
+      ${replayBtn()}
       <div class="blanks">${Array.from({ length: len }, () => '<span></span>').join('')}</div>
-      ${copy ? `<div class="copy"><p>Here is how it's spelled. Type it just like this:</p>${decoderHTML(w)}</div>` : ''}
-      ${R.state === 'right' ? feedbackHTML() : `<form data-act="submit" class="typeform"><input id="answer" class="answer" autocomplete="off" autocapitalize="off" spellcheck="false" value="${esc(R.typed)}"><button class="btn primary">Check</button></form>`}
+      ${copy ? fbHTML(false) : ''}
+      ${R.state === 'right' ? fbHTML() : `<form data-act="submit" class="typeform"><input id="answer" class="answer" autocomplete="off" autocapitalize="off" spellcheck="false" value="${esc(R.typed)}"><button class="btn primary">Check</button></form>`}
     </div>`);
-    if (R.state === 'ask') say(w.say || w.w);
     updateBlanks();
   }
   function updateBlanks() {
@@ -744,8 +791,9 @@
       return;
     }
     grade(ok, true);
-    if (ok) { R.state = 'right'; renderItem(); say('Yes! ' + (w.say || w.w)); }
-    else { R.state = 'copy'; R.typed = ''; renderItem(); say((w.say || w.w) + '. Look at the chunks, and type it again.'); }
+    if (ok) { R.state = 'right'; setFb('right', `Yes! ${w.w}.`); }
+    else { R.state = 'copy'; R.typed = ''; setFb('wrong', `This is how ${w.w} is spelled. Type it just like this.`, { extra: decoderHTML(w) }); }
+    renderItem();
   }
 
   // Read & Pick: read on your own, pick the picture (or meaning)
@@ -762,14 +810,15 @@
       <div class="choices ${it.meaning ? 'defs' : 'pics'}">${it.options.map((o, i) => `
         <button class="choice ${it.meaning ? 'def' : 'pic'} ${R.state !== 'ask' && o === w ? 'is-right' : ''} ${R.state === 'wrong' && o === R.picked ? 'is-wrong' : ''}" data-act="choose" data-i="${i}" ${R.state !== 'ask' ? 'disabled' : ''}>
           <span class="kbd">${i + 1}</span>${it.meaning ? esc(o.def) : emo(o.e, 'lg')}</button>`).join('')}</div>
-      ${R.state === 'ask' ? '' : `<div class="fb ${R.state}">${R.state === 'right' ? (R.usedRadio ? '✅ Yes!' : '✅ Yes! You read that ALL BY YOURSELF. +5 XP, +2% battery') : '❌ Not quite.'}
-        <button class="btn primary" data-act="next" id="nextbtn">Next ▶</button></div>`}
+      ${R.state === 'ask' ? '' : fbHTML()}
     </div>`);
   }
 
   // Teach Your Droid: the droid reads, he judges, and he reprograms it when it's wrong
   const sayOf = x => { for (const l of LEVELS) for (const w of (l.words || [])) if (w.w === x) return w.say || w.w; return x; };
-  const droidLine = it => it.s ? `${it.guess.key}. I think ${it.guess.key} starts with this letter.` : `This word is... ${sayOf(it.guess)}.`;
+  const teachBubble = it => it.s
+    ? `${droidName()} says this part ${rel(it.s)} the letter ${it.s.g}.`
+    : `${droidName()} read this word out loud.`;
 
   function renderTeach(it) {
     const name = esc(droidName());
@@ -778,14 +827,12 @@
     // Word levels: the droid reads the word aloud (what it says is hidden on purpose).
     const shownHTML = it.s
       ? `<div class="claim">
-          <div class="claim-part">${emo(it.guess.e, 'lg')}<button class="btn mini" data-act="droid-again">🔊 Hear it</button></div>
-          <div class="claim-says">starts with</div>
+          <div class="claim-part" id="claim-pic">${emo(it.guess.e, 'lg')}</div>
+          <div class="claim-says">${rel(it.s)}</div>
           <div class="big-letter huge">${esc(it.s.g)}</div>
         </div>`
       : `<div class="big-word">${esc(it.w.w)}</div>`;
-    const bubble = it.s
-      ? `<b>${name}</b> says this part starts with the letter <b class="accent">${esc(it.s.g)}</b>.`
-      : `<b>${name}</b> read this word out loud.`;
+    const bubble = `<span id="bubble-text">${readable(teachBubble(it))}</span>`;
     if (R.state === 'ask') {
       below = `<p class="ask">${it.s ? `Say the part's name. Does it start with the <b>${esc(it.s.g)}</b> sound?` : `Read the word yourself. Did ${name} say it right?`}</p>
         <div class="choices judge">
@@ -793,56 +840,45 @@
           <button class="choice judge-no" data-act="choose" data-i="1"><span class="kbd">2</span>❌ Wrong</button>
         </div>`;
     } else if (R.state === 'fix') {
-      below = `<div class="fb right">✅ Good catch! ${name} needs reprogramming.</div>
+      below = `${fbHTML(false)}
         <p class="ask">Read the word to ${name} so it can learn it.</p>
         ${Recog ? `<button class="btn primary big-btn" data-act="listen" ${R.listening ? 'disabled' : ''}>${R.listening ? '🎙️ Listening…' : '🎤 Read it out loud'}</button>` : ''}
         ${R.msg ? `<p class="tip">${esc(R.msg)}</p>` : ''}
         <form data-act="submit" class="typeform"><input id="answer" class="answer" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="${Recog ? 'or type it' : 'type it'}"><button class="btn">Upload</button></form>`;
     } else {
-      below = `<div class="fb ${R.state === 'wrong' ? 'wrong' : 'right'}">${esc(R.msg || '')}
-        ${R.state === 'wrong' && it.w ? decoderHTML(it.w) : ''}
-        ${it.s && !it.right ? `<div class="claim-fix">${emo(it.s.e, 'md')} <b>${esc(it.s.key)}</b> starts with <b>${esc(it.s.g)}</b></div>` : ''}
-        <button class="btn primary" data-act="next" id="nextbtn">Next ▶</button></div>`;
+      below = fbHTML();
     }
     frame(`<div class="card center teach">
       <div class="droid-row">
         ${droidSVG('sm talking')}
-        <div class="bubble"><span>${bubble}</span>
-          <button class="btn mini" data-act="droid-again">🔊 Hear ${name} again</button></div>
+        <div class="bubble">${bubble}
+          <button class="btn mini" data-act="replay">🔊 Hear ${name} again</button></div>
       </div>
       ${shownHTML}
       ${below}
     </div>`);
-    if (R.state === 'ask') droidSay(droidLine(it));
   }
 
+  // Everything the droid says after he judges is printed and highlighted as it talks.
   function judge(saidRight) {
     const it = R.items[R.i];
     const ok = saidRight === it.right;
     grade(ok, true);
-    const real = it.s ? it.s.key : (it.w.say || it.w.w);
-    if (ok && it.right) {
-      teachWord(it.s ? it.s.g : it.w.w);
-      R.state = 'right';
-      R.msg = `✅ Correct! Saved to ${droidName()}'s memory banks.`;
-      droidSay('Thank you, Maker. Saved to memory.');
-    } else if (ok && it.s) {
-      teachWord(it.s.g);
-      R.state = 'right';
-      R.msg = `✅ Good catch! ${it.guess.key} does not start with ${it.s.g}. ${it.s.key} does.`;
-      droidSay(`Oh my. Correcting. ${it.s.key} starts with this letter.`);
-    } else if (ok) {
-      R.state = 'fix';
-      R.msg = '';
-      droidSay('Oh dear. I seem to have made an error. Please reprogram me, Maker.');
-    } else if (it.right) {
-      R.state = 'wrong';
-      R.msg = `❌ Look again: ${droidName()} was right this time.`;
-      droidSay(`Are you sure, Maker? I believe it says ${real}.`);
+    R.state = ok ? 'right' : 'wrong';
+    const droid = { voice: 'droid' };
+    if (it.s) {
+      const s = it.s, g = it.guess, neg = s.pos === 'end' ? 'does not end with' : 'does not start with';
+      if (ok) teachWord(s.g);
+      if (ok && it.right) setFb('right', `Thank you, Maker! ${s.key} ${rel(s)} ${s.g}. Saved to memory.`, { ...droid, pics: [[s, true]] });
+      else if (ok) setFb('right', `Good catch! ${g.key} ${neg} ${s.g}. ${s.key} does. Saved to memory.`, { ...droid, pics: [[g, false], [s, true]] });
+      else if (it.right) setFb('wrong', `Are you sure, Maker? ${s.key} really ${rel(s)} ${s.g}. Say it slowly.`, { ...droid, pics: [[s, true]] });
+      else setFb('wrong', `Oh dear. I said ${g.key}, but ${g.key} ${neg} ${s.g}. ${s.key} does.`, { ...droid, pics: [[g, false], [s, true]] });
     } else {
-      R.state = 'wrong';
-      R.msg = `❌ ${droidName()} made a mistake and you missed it. Look closely at every letter.`;
-      droidSay(`Oh dear. I said ${it.s ? it.guess.key : sayOf(it.guess)}. That was wrong. It is ${real}.`);
+      const w = it.w;
+      if (ok && it.right) { teachWord(w.w); setFb('right', `Thank you, Maker! ${w.w}. Saved to memory.`, droid); }
+      else if (ok) { R.state = 'fix'; setFb('right', 'Good catch! I made an error. Please reprogram me, Maker.', droid); }
+      else if (it.right) setFb('wrong', `Are you sure, Maker? I said ${w.w}, and that was right.`, { ...droid, extra: decoderHTML(w) });
+      else setFb('wrong', `Oh dear. I said ${it.guess}, but this word is ${w.w}. You missed my mistake.`, { ...droid, extra: decoderHTML(w) });
     }
     renderItem();
   }
@@ -852,11 +888,10 @@
     teachWord(it.w.w);
     if (spoken) { R.spoken++; S.spoken = (S.spoken || 0) + 1; S.xp += 5; }
     R.state = 'right';
-    R.msg = spoken ? `🎤 ${droidName()} heard you! Memory corrected. +5 XP for reading out loud.` : `✅ Memory corrected.`;
+    setFb('right', `${it.w.w}. Memory corrected. Thank you, Maker!`, { voice: 'droid', tip: spoken ? '🎤 It heard you! +5 XP for reading out loud.' : '' });
     persist();
     beep(true);
     renderItem();
-    droidSay(`${it.w.say || it.w.w}. Memory corrected. Thank you, Maker!`);
   }
 
   async function listenFix() {
@@ -923,8 +958,7 @@
       <div class="helpers"><button class="btn radio" data-act="radio-q" data-cost="${CFG.radio.questionCost}">📻 Read the question (−${CFG.radio.questionCost}%)</button></div>
       <div class="choices defs">${q.choices.map((c, i) => `
         <button class="choice def ${R.state !== 'ask' && i === q.a ? 'is-right' : ''} ${R.state === 'wrong' && i === R.picked ? 'is-wrong' : ''}" data-act="choose" data-i="${i}" ${R.state !== 'ask' ? 'disabled' : ''}><span class="kbd">${i + 1}</span><span class="ctext">${readable(c)}</span></button>`).join('')}</div>
-      ${R.state === 'ask' ? '' : `<div class="fb ${R.state}">${R.state === 'right' ? '✅ Yes!' : '❌ Not quite. Look back at the story.'}
-        <button class="btn primary" data-act="next" id="nextbtn">Next ▶</button></div>`}
+      ${R.state === 'ask' ? '' : fbHTML()}
     </div>`);
   }
 
@@ -940,9 +974,20 @@
     if (R.picked === undefined) return;
     grade(ok, !R.usedRadio);
     R.state = ok ? 'right' : 'wrong';
+    if (R.key === 'letter') {
+      const s = it.s;
+      if (ok) setFb('right', `Yes! ${s.key} ${rel(s)} ${s.g}.`, { pics: [[s, true]] });
+      else setFb('wrong', `Not that one. That is ${R.picked.key}. ${s.key} ${rel(s)} ${s.g}.`, { pics: [[R.picked, false], [s, true]] });
+    } else if (R.key === 'spot') {
+      setFb(ok ? 'right' : 'wrong', ok ? `Yes! ${it.w.w}.` : `The word was ${it.w.w}.`, { extra: ok ? '' : decoderHTML(it.w) });
+    } else if (R.key === 'pick') {
+      const w = it.w;
+      if (ok) setFb('right', R.usedRadio ? `Yes! ${w.w}.` : `Yes! You read ${w.w} all by yourself!`, { tip: R.usedRadio ? '' : '+5 XP and +2% radio battery' });
+      else setFb('wrong', it.meaning ? `Not quite. ${w.w} means ${w.def}.` : `Not quite. This is ${w.w}.`, { pics: it.meaning ? null : [[w, true]], extra: decoderHTML(w) });
+    } else {
+      setFb(ok ? 'right' : 'wrong', ok ? 'Yes!' : 'Not quite. Look back at the story.');
+    }
     renderItem();
-    if (R.key === 'letter') say(`${it.s.key}.`);
-    if (R.key === 'spot' && !ok) say(it.w.say || it.w.w);
   }
 
   function renderResults(pct, act, cert) {
@@ -1066,7 +1111,7 @@
       }
       case 'next': return next();
       case 'listen': return listenFix();
-      case 'droid-again': return droidSay(droidLine(R.items[R.i]));
+      case 'replay': return talk(promptParts(R.items[R.i]));
       case 'droid-talk': {
         const np = nextPart();
         return droidSay(taughtCount()

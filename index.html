@@ -270,7 +270,15 @@
   .claim-part { display: flex; flex-direction: column; align-items: center; gap: 6px; background: var(--panel-2); border: 3px solid var(--line); border-radius: 18px; padding: 14px 18px; }
   .claim-says { font-size: 24px; color: var(--muted); }
   .claim .big-letter.huge { display: inline-block; }
-  .claim-fix { display: flex; align-items: center; gap: 10px; color: var(--ink); font-size: 22px; }
+  .fb-line { margin: 0; max-width: 640px; }
+  .fb-icon { margin-right: 4px; }
+  .fb-pics { display: flex; gap: 18px; justify-content: center; flex-wrap: wrap; }
+  .fb-pic { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 18px; color: var(--ink); }
+  .fb-pic.no .emo { opacity: .55; border-color: var(--bad); }
+  .fb-pic.ok .emo { border-color: var(--ok); border-width: 3px; }
+  .fb .big-letter.huge { color: var(--accent); }
+  .pic-main { display: inline-block; border-radius: 22px; }
+  .claim-part.hl, .pic-main.hl { box-shadow: 0 0 0 5px var(--accent); }
   @media (max-width: 600px) { .droid-panel { flex-direction: column; text-align: center; } .dparts { justify-content: center; } .meter { margin: 0 auto; } }
 
   /* teacher */
