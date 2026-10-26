@@ -733,8 +733,15 @@
     if (R.key === 'letter') return [['#ask-text', 'Which part starts with this sound?']];
     if (R.key === 'spot' || R.key === 'type') return [[null, it.w.say || it.w.w]];
     if (R.key === 'teach') {
-      if (it.s) return [['#claim-pic', it.guess.key, 'droid'], ['#bubble-text', speakable(teachBubble(it)), 'droid']];
-      return [['.big-word', `This word is... ${sayOf(it.guess)}.`, 'droid']];
+      // Question first (student hears what to do), then the droid's claim.
+      if (it.s) {
+        const q = `Say the part's name. Does it ${rel(it.s)} the ${it.s.g} sound?`;
+        return [['#ask-text', q], ['#bubble-text', speakable(teachBubble(it)), 'droid']];
+      }
+      return [
+        ['#ask-text', `Read the word yourself. Did ${droidName()} say it right?`],
+        ['.big-word', `This word is... ${sayOf(it.guess)}.`, 'droid']
+      ];
     }
     return [];
   }
@@ -881,14 +888,17 @@
     // Word levels: the droid reads the word aloud (what it says is hidden on purpose).
     const shownHTML = it.s
       ? `<div class="claim">
-          <div class="claim-part" id="claim-pic">${emo(it.guess.e, 'lg')}</div>
+          <div class="claim-part" id="claim-pic"><span class="claim-label">Part</span>${emo(it.guess.e, 'lg')}</div>
           <div class="claim-says">${rel(it.s)}</div>
-          <div class="big-letter huge">${esc(it.s.g)}</div>
+          <div class="claim-letter"><span class="claim-label">Letter</span><div class="big-letter huge">${esc(it.s.g)}</div></div>
         </div>`
       : `<div class="big-word">${esc(it.w.w)}</div>`;
     const bubble = `<span id="bubble-text">${readable(teachBubble(it))}</span>`;
     if (R.state === 'ask') {
-      below = `<p class="ask">${it.s ? `Say the part's name. Does it start with the <b>${esc(it.s.g)}</b> sound?` : `Read the word yourself. Did ${name} say it right?`}</p>
+      const ask = it.s
+        ? `Say the part's name. Does it ${rel(it.s)} the <b>${esc(it.s.g)}</b> sound?`
+        : `Read the word yourself. Did ${name} say it right?`;
+      below = `<p class="ask" id="ask-text">${readable(ask)}</p>
         <div class="choices judge">
           <button class="choice judge-yes" data-act="choose" data-i="0"><span class="kbd">1</span>✅ Right</button>
           <button class="choice judge-no" data-act="choose" data-i="1"><span class="kbd">2</span>❌ Wrong</button>
