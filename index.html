@@ -7,6 +7,7 @@
 <meta name="description" content="Phonics and reading practice built around engineering, robotics, and making things.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- Lexend is optional: if school IT blocks Google Fonts, the system fallbacks below take over. -->
 <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;600;800&display=swap" rel="stylesheet">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛠️</text></svg>">
 <style>
@@ -41,7 +42,7 @@
       linear-gradient(90deg, var(--grid) 1px, transparent 1px);
     background-size: 28px 28px;
     color: var(--ink);
-    font-family: 'Lexend', 'Segoe UI', system-ui, sans-serif;
+    font-family: 'Lexend', 'Segoe UI', system-ui, -apple-system, Roboto, Arial, sans-serif;
     font-size: 18px;
     line-height: 1.5;
     min-height: 100vh;
@@ -240,14 +241,30 @@
   .droid.sm { width: 120px; height: 192px; }
   .droid.md { width: 130px; height: 208px; }
   .droid.lg { width: 160px; height: 256px; margin: 0 auto; }
-  .droid g.on { fill: #9fb3c8; stroke: #34506d; stroke-width: 3; }
-  .droid.gold g.on { fill: #e2b23a; stroke: #7a5a12; }
-  .droid g.ghost { fill: none; stroke: var(--muted); stroke-width: 2; stroke-dasharray: 5 5; opacity: .6; }
-  .droid g.on line { stroke-width: 3; }
-  .droid .eyes.on circle { fill: #ffd54a; stroke: #b07800; filter: drop-shadow(0 0 4px #ffd54a); }
-  .droid .core.on circle:last-child { fill: #6ff0ff; filter: drop-shadow(0 0 5px #6ff0ff); }
-  .droid.talking .eyes.on circle { animation: blink 1.6s infinite; }
+  .droid .shell, .droid g.on rect, .droid g.on circle, .droid g.limbs.on rect { fill: url(#dmSil); stroke: #2b3442; stroke-width: 2.5; }
+  .droid .dark, .droid g.on .knee { fill: url(#dmGun); stroke: #1f2630; stroke-width: 2.5; }
+  .droid .chest { fill: url(#dmBlue); stroke: #12366f; stroke-width: 2.5; }
+  .droid .seam { fill: none; stroke: rgba(20, 30, 45, .45); stroke-width: 1.5; }
+  .droid .wire { fill: none; stroke-width: 2.5; stroke-linecap: round; }
+  .droid .w1 { stroke: #ff7a59; } .droid .w2 { stroke: #5fd3ff; }
+  .droid g.on line { stroke: #2b3442; stroke-width: 2; }
+  .droid.gold .shell, .droid.gold g.limbs.on rect, .droid.gold g.limbs.on circle:not(.knee) { fill: url(#dmGold); stroke: #6b4a0c; }
+  /* missing covers: dashed outline + exposed wiring look */
+  .droid g.ghost * { fill: rgba(169, 193, 220, .06) !important; stroke: #a9c1dc !important; stroke-width: 2; stroke-dasharray: 5 4; filter: none !important; }
+  .droid .eyes.on ellipse { fill: url(#dmEye); stroke: #8a5600; stroke-width: 2; filter: drop-shadow(0 0 6px #ffd54a); animation: glow 2.4s ease-in-out infinite; }
+  .droid .eyes.on .glint { fill: #fff; stroke: none; }
+  .droid .voice.on rect { fill: #1f2630; stroke: #8f9aa8; }
+  .droid .voice.on line { stroke: #6ff0ff; }
+  .droid .core.on circle:first-child { fill: url(#dmGun); }
+  .droid .core.on .light { fill: #6ff0ff; stroke: none; filter: drop-shadow(0 0 6px #6ff0ff); animation: glow 1.8s ease-in-out infinite; }
+  .droid .antenna.on .tip { fill: #ff5a5a; stroke: #7a1010; filter: drop-shadow(0 0 5px #ff5a5a); animation: glow 1.2s steps(2) infinite; }
+  .droid .bob { animation: bob 3.2s ease-in-out infinite; transform-origin: 100px 300px; }
+  .droid.talking .eyes.on ellipse { animation: blink 1.6s infinite; }
+  .droid.talking .voice.on line { animation: glow .4s steps(2) infinite; }
+  @keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+  @keyframes glow { 0%, 100% { opacity: 1; } 50% { opacity: .65; } }
   @keyframes blink { 0%, 90%, 100% { opacity: 1; } 94% { opacity: .2; } }
+  @media (prefers-reduced-motion: reduce) { .droid *, .tile, .choice { animation: none !important; } }
   .droid-panel { display: flex; gap: 20px; align-items: center; background: var(--panel); border: 2px solid var(--line); border-radius: var(--radius); padding: 16px 20px; margin-top: 16px; }
   .droid-btn { background: none; border: none; padding: 0; cursor: pointer; }
   .droid-info { flex: 1; }
@@ -289,6 +306,31 @@
   .tbl th, .tbl td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); }
   .tbl th { color: var(--muted); font-weight: 600; }
   .welcome { display: grid; place-items: center; min-height: 90vh; }
+
+  /* ===== Art polish (ART-NOTES.md) ===== */
+  /* Teaching rule #1: the spoken word must be unmistakable. */
+  .hl, .tok.hl { background: var(--accent) !important; color: var(--accent-ink) !important; box-shadow: 0 0 0 4px var(--accent), 0 0 22px 6px rgba(255, 201, 60, .55); text-decoration: underline 4px #7a5a12; text-underline-offset: 4px; }
+  .big-word { position: relative; z-index: 1; }
+  .big-word.hl { color: var(--accent) !important; text-decoration: underline 8px var(--accent); text-underline-offset: 10px; text-shadow: 0 0 10px rgba(255, 201, 60, .9), 0 0 34px rgba(255, 201, 60, .7); transform: scale(1.04); transition: transform .12s; }
+  .top { border-bottom: 3px double #8fa7c4; }
+  .brand::after { content: 'STREAM WORKSHOP · DWG WR-01'; font-size: 11px; font-weight: 600; letter-spacing: .12em; color: #c9d6e6; border: 1px solid #8fa7c4; padding: 1px 6px; margin-left: 6px; }
+  .card, .proj, .droid-panel { box-shadow: inset 0 0 0 1px rgba(201, 214, 230, .12), 0 4px 0 rgba(0, 0, 0, .25); }
+  h2 { text-transform: uppercase; letter-spacing: .06em; }
+  .btn.primary { background: linear-gradient(180deg, #ffe08a, #ffc93c 55%, #e0a91f); border-color: #8a6b1d; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .7), 0 3px 0 #6b520f; }
+  .btn.primary:hover { background: linear-gradient(180deg, #fff0b8, #ffd866 55%, #e8b42a); }
+  .btn.primary:active { transform: translateY(2px); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .5), 0 1px 0 #6b520f; }
+  .lvl { position: relative; min-height: 76px; padding: 14px 16px; transition: transform .1s, background .15s; }
+  .lvl:active:not([disabled]) { transform: scale(.98); }
+  .lvl-num { width: 46px; height: 46px; border: 2px solid #8fa7c4; font-size: 20px; }
+  .lvl.done::after { content: 'CERTIFIED'; position: absolute; right: 10px; top: 8px; transform: rotate(-8deg); font-size: 12px; font-weight: 800; letter-spacing: .14em; color: var(--ok); border: 2px solid var(--ok); border-radius: 4px; padding: 0 6px; background: rgba(14, 41, 68, .9); }
+  .tile, .choice, .act, .ex { transition: transform .1s, border-color .15s, background .15s; }
+  .tile:active, .choice:active:not([disabled]), .act:active, .ex:active { transform: scale(.96); }
+  .choice.is-right { animation: flash .5s ease-out; }
+  @keyframes flash { 0% { box-shadow: 0 0 0 0 rgba(61, 220, 151, .9); } 100% { box-shadow: 0 0 0 18px rgba(61, 220, 151, 0); } }
+  #toast { background: linear-gradient(180deg, #ffe08a, #ffc93c); border: 2px solid #8a6b1d; box-shadow: 0 6px 20px rgba(0, 0, 0, .4); }
+  #toast::before { content: '🔧 '; }
+  #toast.show { animation: spark .4s ease-out; }
+  @keyframes spark { 0% { box-shadow: 0 0 0 0 rgba(255, 201, 60, .9); } 100% { box-shadow: 0 0 0 16px rgba(255, 201, 60, 0); } }
 
   @media (max-width: 600px) {
     body { font-size: 16px; }

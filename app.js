@@ -59,6 +59,8 @@
     return out;
   }
 
+  // NOTE: Twemoji loads from a CDN; school IT may block it. emo() falls back to the
+  // plain emoji character (wrEmoFail) so nothing breaks offline.
   // Twemoji images so pictures look the same on every computer (Windows 10 is missing newer emoji).
   const TW = 'https://cdn.jsdelivr.net/gh/jdecked/twemoji@15.0.3/assets/svg/';
   window.wrEmoFail = img => { const s = document.createElement('span'); s.className = img.className + ' emo-txt'; s.textContent = img.alt; img.replaceWith(s); };
@@ -234,17 +236,31 @@
   const droidName = () => S.droidName || 'your droid';
   const droidSay = text => say(text, 0.95, 1.6);
 
+  // Unfinished protocol droid: silver/gunmetal frame, ONE blue chest plate,
+  // missing covers (dashed ghosts + wire hints) until each part is earned.
   function droidSVG(cls) {
     const st = id => droidHas(id) ? 'on' : 'ghost';
+    const wires = '<path class="wire w1" d="M0 0 q6 12 0 24 q-6 12 0 24"/><path class="wire w2" d="M6 0 q-6 12 0 24 q6 12 0 24"/>';
     return `<svg class="droid ${cls || ''} ${droidHas('plating') ? 'gold' : ''}" viewBox="0 0 200 320" role="img" aria-label="${esc(droidName())}">
-      <g class="${st('antenna')}"><line x1="100" y1="6" x2="100" y2="22"/><circle cx="100" cy="6" r="5"/></g>
-      <g class="on"><rect x="70" y="20" width="60" height="64" rx="26"/><rect x="90" y="84" width="20" height="10"/></g>
-      <g class="${st('eyes')} eyes"><circle cx="87" cy="48" r="8"/><circle cx="113" cy="48" r="8"/></g>
-      <g class="${st('voice')}"><rect x="86" y="64" width="28" height="10" rx="3"/><line x1="93" y1="64" x2="93" y2="74"/><line x1="100" y1="64" x2="100" y2="74"/><line x1="107" y1="64" x2="107" y2="74"/></g>
-      <g class="on"><rect x="60" y="94" width="80" height="92" rx="14"/></g>
-      <g class="${st('core')} core"><circle cx="100" cy="132" r="14"/><circle cx="100" cy="132" r="6"/></g>
-      <g class="${st('arms')}"><rect x="34" y="98" width="20" height="78" rx="9"/><rect x="146" y="98" width="20" height="78" rx="9"/><circle cx="44" cy="186" r="10"/><circle cx="156" cy="186" r="10"/></g>
-      <g class="${st('legs')}"><rect x="70" y="190" width="24" height="96" rx="9"/><rect x="106" y="190" width="24" height="96" rx="9"/><rect x="62" y="286" width="36" height="16" rx="6"/><rect x="102" y="286" width="36" height="16" rx="6"/></g>
+      <defs>
+        <linearGradient id="dmSil" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#eef2f7"/><stop offset=".5" stop-color="#a9b4c2"/><stop offset="1" stop-color="#6b7686"/></linearGradient>
+        <linearGradient id="dmGun" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7c8796"/><stop offset="1" stop-color="#3a4350"/></linearGradient>
+        <linearGradient id="dmBlue" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9cc6ff"/><stop offset=".45" stop-color="#3f8cff"/><stop offset="1" stop-color="#1b4fa8"/></linearGradient>
+        <linearGradient id="dmGold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff1b8"/><stop offset=".5" stop-color="#e2b23a"/><stop offset="1" stop-color="#8a6212"/></linearGradient>
+        <radialGradient id="dmEye"><stop offset="0" stop-color="#fffbe0"/><stop offset=".5" stop-color="#ffd54a"/><stop offset="1" stop-color="#c47a00"/></radialGradient>
+      </defs>
+      <g class="bob">
+      <g class="${st('antenna')} antenna"><line x1="100" y1="8" x2="100" y2="24"/><circle class="tip" cx="100" cy="8" r="5"/></g>
+      <g class="on frame"><path class="shell" d="M72 46 Q72 20 100 20 Q128 20 128 46 L128 70 Q128 86 100 86 Q72 86 72 70 Z"/><rect class="dark" x="92" y="86" width="16" height="10" rx="2"/><path class="seam" d="M74 44 H126"/></g>
+      <g class="${st('eyes')} eyes"><ellipse cx="87" cy="52" rx="9" ry="7"/><ellipse cx="113" cy="52" rx="9" ry="7"/><circle class="glint" cx="84" cy="50" r="2"/><circle class="glint" cx="110" cy="50" r="2"/></g>
+      <g class="${st('voice')} voice"><rect x="86" y="66" width="28" height="12" rx="4"/><line x1="92" y1="68" x2="92" y2="76"/><line x1="97" y1="68" x2="97" y2="76"/><line x1="103" y1="68" x2="103" y2="76"/><line x1="108" y1="68" x2="108" y2="76"/></g>
+      <g class="on frame torso"><path class="dark" d="M62 98 H138 L132 186 H68 Z"/>
+        <g transform="translate(76 140)">${wires}</g><g transform="translate(114 140)">${wires}</g>
+        <path class="chest" d="M70 100 H130 L126 136 Q100 146 74 136 Z"/><path class="seam" d="M80 108 H120 M78 120 H122"/></g>
+      <g class="${st('core')} core"><circle cx="100" cy="160" r="13"/><circle class="light" cx="100" cy="160" r="5"/></g>
+      <g class="${st('arms')} limbs"><circle cx="50" cy="104" r="9"/><circle cx="150" cy="104" r="9"/><rect x="40" y="108" width="18" height="74" rx="8"/><rect x="142" y="108" width="18" height="74" rx="8"/><circle cx="49" cy="190" r="9"/><circle cx="151" cy="190" r="9"/></g>
+      <g class="${st('legs')} limbs"><rect x="72" y="190" width="22" height="96" rx="8"/><rect x="106" y="190" width="22" height="96" rx="8"/><circle class="knee" cx="83" cy="236" r="6"/><circle class="knee" cx="117" cy="236" r="6"/><rect x="64" y="286" width="34" height="16" rx="6"/><rect x="102" y="286" width="34" height="16" rx="6"/></g>
+      </g>
     </svg>`;
   }
 
