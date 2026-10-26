@@ -735,7 +735,8 @@
     if (R.key === 'teach') {
       // Question first (student hears what to do), then the droid's claim.
       if (it.s) {
-        const q = `Say the part's name. Does it ${rel(it.s)} the ${it.s.g} sound?`;
+        const askRel = it.s.pos === 'end' ? 'end with' : 'start with';
+        const q = `Say the part's name. Does it ${askRel} the ${it.s.g} sound?`;
         return [['#ask-text', q], ['#bubble-text', speakable(teachBubble(it)), 'droid']];
       }
       return [
@@ -895,10 +896,17 @@
       : `<div class="big-word">${esc(it.w.w)}</div>`;
     const bubble = `<span id="bubble-text">${readable(teachBubble(it))}</span>`;
     if (R.state === 'ask') {
-      const ask = it.s
-        ? `Say the part's name. Does it ${rel(it.s)} the <b>${esc(it.s.g)}</b> sound?`
-        : `Read the word yourself. Did ${name} say it right?`;
-      below = `<p class="ask" id="ask-text">${readable(ask)}</p>
+      // Keep HTML out of readable() — it escapes tags. Bold the letter as its own .w span.
+      let askHTML;
+      if (it.s) {
+        const askRel = it.s.pos === 'end' ? 'end with' : 'start with';
+        askHTML = readable(`Say the part's name. Does it ${askRel} the `)
+          + `<span class="w"><b>${esc(it.s.g)}</b></span>`
+          + readable(' sound?');
+      } else {
+        askHTML = readable(`Read the word yourself. Did ${name} say it right?`);
+      }
+      below = `<p class="ask" id="ask-text">${askHTML}</p>
         <div class="choices judge">
           <button class="choice judge-yes" data-act="choose" data-i="0"><span class="kbd">1</span>✅ Right</button>
           <button class="choice judge-no" data-act="choose" data-i="1"><span class="kbd">2</span>❌ Wrong</button>
