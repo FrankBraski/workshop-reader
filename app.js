@@ -59,6 +59,8 @@
     return out;
   }
 
+  // NOTE: Twemoji loads from a CDN; school IT may block it. emo() falls back to the
+  // plain emoji character (wrEmoFail) so nothing breaks offline.
   // Twemoji images so pictures look the same on every computer (Windows 10 is missing newer emoji).
   const TW = 'https://cdn.jsdelivr.net/gh/jdecked/twemoji@15.0.3/assets/svg/';
   window.wrEmoFail = img => { const s = document.createElement('span'); s.className = img.className + ' emo-txt'; s.textContent = img.alt; img.replaceWith(s); };
@@ -234,17 +236,69 @@
   const droidName = () => S.droidName || 'your droid';
   const droidSay = text => say(text, 0.95, 1.6);
 
+  // Protocol-droid silhouette (C-3PO-like), silver/gunmetal + ONE blue chest plate,
+  // unfinished covers / exposed wiring until each part is earned. Original design.
   function droidSVG(cls) {
     const st = id => droidHas(id) ? 'on' : 'ghost';
-    return `<svg class="droid ${cls || ''} ${droidHas('plating') ? 'gold' : ''}" viewBox="0 0 200 320" role="img" aria-label="${esc(droidName())}">
-      <g class="${st('antenna')}"><line x1="100" y1="6" x2="100" y2="22"/><circle cx="100" cy="6" r="5"/></g>
-      <g class="on"><rect x="70" y="20" width="60" height="64" rx="26"/><rect x="90" y="84" width="20" height="10"/></g>
-      <g class="${st('eyes')} eyes"><circle cx="87" cy="48" r="8"/><circle cx="113" cy="48" r="8"/></g>
-      <g class="${st('voice')}"><rect x="86" y="64" width="28" height="10" rx="3"/><line x1="93" y1="64" x2="93" y2="74"/><line x1="100" y1="64" x2="100" y2="74"/><line x1="107" y1="64" x2="107" y2="74"/></g>
-      <g class="on"><rect x="60" y="94" width="80" height="92" rx="14"/></g>
-      <g class="${st('core')} core"><circle cx="100" cy="132" r="14"/><circle cx="100" cy="132" r="6"/></g>
-      <g class="${st('arms')}"><rect x="34" y="98" width="20" height="78" rx="9"/><rect x="146" y="98" width="20" height="78" rx="9"/><circle cx="44" cy="186" r="10"/><circle cx="156" cy="186" r="10"/></g>
-      <g class="${st('legs')}"><rect x="70" y="190" width="24" height="96" rx="9"/><rect x="106" y="190" width="24" height="96" rx="9"/><rect x="62" y="286" width="36" height="16" rx="6"/><rect x="102" y="286" width="36" height="16" rx="6"/></g>
+    const wires = '<path class="wire w1" d="M0 0 q5 10 0 20 q-5 10 0 20"/><path class="wire w2" d="M7 2 q-5 10 0 20 q5 10 0 18"/><path class="wire w1" d="M-6 4 q6 10 0 18"/>';
+    return `<svg class="droid ${cls || ''} ${droidHas('plating') ? 'gold' : ''}" viewBox="0 0 200 340" role="img" aria-label="${esc(droidName())}">
+      <defs>
+        <linearGradient id="dmSil" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f4f6f8"/><stop offset=".45" stop-color="#c5ced8"/><stop offset="1" stop-color="#7a8492"/></linearGradient>
+        <linearGradient id="dmGun" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8a94a3"/><stop offset="1" stop-color="#3a4350"/></linearGradient>
+        <linearGradient id="dmBlue" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9cc6ff"/><stop offset=".4" stop-color="#3f8cff"/><stop offset="1" stop-color="#1b4fa8"/></linearGradient>
+        <linearGradient id="dmGold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff1b8"/><stop offset=".5" stop-color="#e2b23a"/><stop offset="1" stop-color="#8a6212"/></linearGradient>
+        <radialGradient id="dmEye"><stop offset="0" stop-color="#fffbe0"/><stop offset=".55" stop-color="#ffd54a"/><stop offset="1" stop-color="#9a5a00"/></radialGradient>
+      </defs>
+      <g class="bob">
+      <!-- antenna -->
+      <g class="${st('antenna')} antenna"><line x1="100" y1="4" x2="100" y2="22"/><circle class="tip" cx="100" cy="4" r="4.5"/></g>
+      <!-- classic protocol head: tall oval, mid seam, cheek plates -->
+      <g class="on frame head">
+        <ellipse class="shell" cx="100" cy="58" rx="36" ry="42"/>
+        <path class="seam" d="M100 18 V96"/>
+        <path class="seam" d="M70 48 Q100 54 130 48"/>
+        <path class="dark cheek" d="M66 70 Q70 88 88 92 L88 78 Q74 74 66 70Z"/>
+        <path class="dark cheek" d="M134 70 Q130 88 112 92 L112 78 Q126 74 134 70Z"/>
+        <rect class="dark" x="93" y="98" width="14" height="12" rx="3"/>
+      </g>
+      <g class="${st('eyes')} eyes">
+        <circle class="socket" cx="84" cy="52" r="11"/><circle class="socket" cx="116" cy="52" r="11"/>
+        <circle cx="84" cy="52" r="7"/><circle cx="116" cy="52" r="7"/>
+        <circle class="glint" cx="81" cy="49" r="2"/><circle class="glint" cx="113" cy="49" r="2"/>
+      </g>
+      <g class="${st('voice')} voice">
+        <rect x="86" y="72" width="28" height="16" rx="3"/>
+        <line x1="91" y1="74" x2="91" y2="86"/><line x1="96" y1="74" x2="96" y2="86"/>
+        <line x1="101" y1="74" x2="101" y2="86"/><line x1="106" y1="74" x2="106" y2="86"/><line x1="111" y1="74" x2="111" y2="86"/>
+      </g>
+      <!-- shoulders + blue chest; midriff open with wires (Episode I unfinished) -->
+      <g class="on frame torso">
+        <ellipse class="shell pauldron" cx="58" cy="118" rx="18" ry="12"/>
+        <ellipse class="shell pauldron" cx="142" cy="118" rx="18" ry="12"/>
+        <path class="dark" d="M68 112 H132 L128 168 H72 Z"/>
+        <g class="midriff" transform="translate(78 168)">${wires}</g>
+        <g class="midriff" transform="translate(112 168)">${wires}</g>
+        <path class="chest" d="M74 114 H126 L122 152 Q100 162 78 152 Z"/>
+        <path class="seam" d="M84 122 H116 M82 134 H118 M86 144 H114"/>
+        <circle class="dark ab" cx="100" cy="188" r="10"/>
+      </g>
+      <g class="${st('core')} core"><circle cx="100" cy="188" r="8"/><circle class="light" cx="100" cy="188" r="3.5"/></g>
+      <!-- articulated arms -->
+      <g class="${st('arms')} limbs">
+        <circle class="joint" cx="48" cy="122" r="8"/><circle class="joint" cx="152" cy="122" r="8"/>
+        <rect x="40" y="128" width="16" height="48" rx="7"/><rect x="144" y="128" width="16" height="48" rx="7"/>
+        <circle class="joint" cx="48" cy="180" r="7"/><circle class="joint" cx="152" cy="180" r="7"/>
+        <rect x="41" y="184" width="14" height="42" rx="6"/><rect x="145" y="184" width="14" height="42" rx="6"/>
+        <ellipse class="hand" cx="48" cy="232" rx="10" ry="7"/><ellipse class="hand" cx="152" cy="232" rx="10" ry="7"/>
+      </g>
+      <!-- legs: thigh + shin, some plating missing when ghost -->
+      <g class="${st('legs')} limbs">
+        <rect x="74" y="210" width="22" height="52" rx="7"/><rect x="104" y="210" width="22" height="52" rx="7"/>
+        <circle class="knee" cx="85" cy="266" r="7"/><circle class="knee" cx="115" cy="266" r="7"/>
+        <rect x="75" y="270" width="20" height="46" rx="6"/><rect x="105" y="270" width="20" height="46" rx="6"/>
+        <path class="shell foot" d="M68 316 H96 L94 328 H66 Z"/><path class="shell foot" d="M104 316 H132 L130 328 H102 Z"/>
+      </g>
+      </g>
     </svg>`;
   }
 
