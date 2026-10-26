@@ -241,26 +241,30 @@
   .droid.sm { width: 120px; height: 192px; }
   .droid.md { width: 130px; height: 208px; }
   .droid.lg { width: 160px; height: 256px; margin: 0 auto; }
-  .droid .shell, .droid g.on rect, .droid g.on circle, .droid g.limbs.on rect { fill: url(#dmSil); stroke: #2b3442; stroke-width: 2.5; }
-  .droid .dark, .droid g.on .knee { fill: url(#dmGun); stroke: #1f2630; stroke-width: 2.5; }
+  .droid .shell, .droid .pauldron, .droid .foot, .droid .hand, .droid g.on rect, .droid g.limbs.on rect, .droid g.limbs.on .joint { fill: url(#dmSil); stroke: #2b3442; stroke-width: 2.2; }
+  .droid .dark, .droid .cheek, .droid .ab, .droid g.on .knee, .droid .eyes .socket { fill: url(#dmGun); stroke: #1f2630; stroke-width: 2.2; }
   .droid .chest { fill: url(#dmBlue); stroke: #12366f; stroke-width: 2.5; }
-  .droid .seam { fill: none; stroke: rgba(20, 30, 45, .45); stroke-width: 1.5; }
-  .droid .wire { fill: none; stroke-width: 2.5; stroke-linecap: round; }
+  .droid .seam { fill: none; stroke: rgba(20, 30, 45, .5); stroke-width: 1.6; }
+  .droid .wire { fill: none; stroke-width: 2.4; stroke-linecap: round; }
   .droid .w1 { stroke: #ff7a59; } .droid .w2 { stroke: #5fd3ff; }
-  .droid g.on line { stroke: #2b3442; stroke-width: 2; }
-  .droid.gold .shell, .droid.gold g.limbs.on rect, .droid.gold g.limbs.on circle:not(.knee) { fill: url(#dmGold); stroke: #6b4a0c; }
-  /* missing covers: dashed outline + exposed wiring look */
-  .droid g.ghost * { fill: rgba(169, 193, 220, .06) !important; stroke: #a9c1dc !important; stroke-width: 2; stroke-dasharray: 5 4; filter: none !important; }
-  .droid .eyes.on ellipse { fill: url(#dmEye); stroke: #8a5600; stroke-width: 2; filter: drop-shadow(0 0 6px #ffd54a); animation: glow 2.4s ease-in-out infinite; }
-  .droid .eyes.on .glint { fill: #fff; stroke: none; }
+  .droid g.on line, .droid .antenna.on line { stroke: #2b3442; stroke-width: 2; }
+  .droid.gold .shell, .droid.gold .pauldron, .droid.gold .foot, .droid.gold .hand, .droid.gold g.limbs.on rect, .droid.gold g.limbs.on .joint { fill: url(#dmGold); stroke: #6b4a0c; }
+  .droid.gold .chest { fill: url(#dmBlue); } /* chest stays blue even with gold plating */
+  .droid g.ghost * { fill: rgba(169, 193, 220, .05) !important; stroke: #a9c1dc !important; stroke-width: 2; stroke-dasharray: 5 4; filter: none !important; }
+  .droid .eyes.on circle:not(.socket):not(.glint) { fill: url(#dmEye); stroke: #8a5600; stroke-width: 1.5; filter: drop-shadow(0 0 6px #ffd54a); animation: glow 2.4s ease-in-out infinite; }
+  .droid .eyes.on .glint { fill: #fff; stroke: none; filter: none; }
+  .droid .eyes.on .socket { fill: #1a222c; stroke: #4a5564; }
   .droid .voice.on rect { fill: #1f2630; stroke: #8f9aa8; }
   .droid .voice.on line { stroke: #6ff0ff; }
-  .droid .core.on circle:first-child { fill: url(#dmGun); }
+  .droid .core.on circle:first-child { fill: url(#dmGun); stroke: #1f2630; }
   .droid .core.on .light { fill: #6ff0ff; stroke: none; filter: drop-shadow(0 0 6px #6ff0ff); animation: glow 1.8s ease-in-out infinite; }
   .droid .antenna.on .tip { fill: #ff5a5a; stroke: #7a1010; filter: drop-shadow(0 0 5px #ff5a5a); animation: glow 1.2s steps(2) infinite; }
-  .droid .bob { animation: bob 3.2s ease-in-out infinite; transform-origin: 100px 300px; }
-  .droid.talking .eyes.on ellipse { animation: blink 1.6s infinite; }
+  .droid .bob { animation: bob 3.2s ease-in-out infinite; transform-origin: 100px 320px; }
+  .droid.talking .eyes.on circle:not(.socket):not(.glint) { animation: blink 1.6s infinite; }
   .droid.talking .voice.on line { animation: glow .4s steps(2) infinite; }
+  .droid.sm { width: 110px; height: 187px; }
+  .droid.md { width: 124px; height: 210px; }
+  .droid.lg { width: 150px; height: 255px; margin: 0 auto; }
   @keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
   @keyframes glow { 0%, 100% { opacity: 1; } 50% { opacity: .65; } }
   @keyframes blink { 0%, 90%, 100% { opacity: 1; } 94% { opacity: .2; } }
