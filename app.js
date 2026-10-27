@@ -629,6 +629,25 @@
     toastTimer = setTimeout(() => { t.className = ''; }, 4000);
   }
 
+  // ---------------------------------------------------------------- Edge tip
+  // The droid's voices sound best in Microsoft Edge (natural voices like "Aria").
+  // Other browsers get a friendly, dismissible tip on the home screen, once per session.
+  function isEdge() {
+    const b = navigator.userAgentData && navigator.userAgentData.brands;
+    if (b && b.some(x => /Microsoft Edge/i.test(x.brand))) return true;
+    return /\bEdg(e|A|iOS)?\//.test(navigator.userAgent || '');
+  }
+  function edgeTipHidden() { try { return sessionStorage.getItem('wr-edge-tip') === 'hidden'; } catch (e) { return false; } }
+  function edgeTipHTML() {
+    if (isEdge() || edgeTipHidden()) return '';
+    return `<div class="edge-tip" role="note">
+      <span class="edge-tip-icon">🗣️</span>
+      <span><b>Pro engineer tip:</b> open Workshop Reader in <b>Microsoft Edge</b> for the best speaking voices.
+      In this browser your droid may sound like it gargled a box of bolts. 🔩</span>
+      <button class="btn mini" data-act="edge-tip-hide" title="Hide this tip">Got it ✖</button>
+    </div>`;
+  }
+
   // ---------------------------------------------------------------- screens
   let view = 'home', curLevel = null;
 
@@ -656,6 +675,7 @@
     }).join('');
     $app.innerHTML = `${topbar(null, '')}
       <main class="home">
+        ${edgeTipHTML()}
         <section class="hello">
           <h1>Engineer ${esc(S.name)}</h1>
           <div class="stats">
@@ -1215,6 +1235,11 @@
         return;
       }
       case 'next': return next();
+      case 'edge-tip-hide': {
+        try { sessionStorage.setItem('wr-edge-tip', 'hidden'); } catch (e) {}
+        const t = document.querySelector('.edge-tip'); if (t) t.remove();
+        return;
+      }
       case 'listen': return listenFix();
       case 'replay': return talk(promptParts(R.items[R.i]));
       case 'droid-talk': {

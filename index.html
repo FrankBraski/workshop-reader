@@ -304,6 +304,10 @@
   .claim-part.hl, .pic-main.hl { box-shadow: 0 0 0 5px var(--accent); }
   @media (max-width: 600px) { .droid-panel { flex-direction: column; text-align: center; } .dparts { justify-content: center; } .meter { margin: 0 auto; } }
 
+  /* Edge tip (home screen, non-Edge browsers only) */
+  .edge-tip { display: flex; align-items: center; gap: 12px; margin: 0 0 16px; padding: 12px 16px; background: #fff7d6; color: #3a2e00; border: 2px solid #e8c547; border-radius: 14px; font-size: 18px; text-align: left; }
+  .edge-tip-icon { font-size: 30px; }
+  .edge-tip .btn.mini { margin-left: auto; white-space: nowrap; }
   /* teacher */
   .teacher .ctl { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin: 10px 0; }
   .teacher input:not([type=file]) { padding: 6px 10px; border-radius: 8px; border: 2px solid var(--line); background: #0a1e33; margin-left: 6px; }
