@@ -110,35 +110,49 @@
     const my = ++hlToken;
     document.querySelectorAll('.hl').forEach(x => x.classList.remove('hl'));
     const words = !el ? [] : el.querySelectorAll('.w').length ? [...el.querySelectorAll('.w')] : [el];
-    const toks = [];
-    text.replace(/\S+/g, (m, i) => { toks.push({ i, len: m.length }); return m; });
     rate = rate || 0.85;
-    let cur = -1, gotBoundary = false, timer;
-    const mark = i => {
-      if (my !== hlToken || i === cur) return;
-      if (words[cur]) words[cur].classList.remove('hl');
-      cur = i;
-      if (words[i]) { words[i].classList.add('hl'); if (words.length > 1) words[i].scrollIntoView({ block: 'nearest' }); }
+    pitch = pitch || 1;
+    // Speak one sentence at a time with a short pause so 2nd/3rd lines don't run on.
+    const parts = splitSentences(text);
+    let globalCur = -1;
+    const mark = gi => {
+      if (my !== hlToken || gi === globalCur) return;
+      if (words[globalCur]) words[globalCur].classList.remove('hl');
+      globalCur = gi;
+      if (words[gi]) { words[gi].classList.add('hl'); if (words.length > 1) words[gi].scrollIntoView({ block: 'nearest' }); }
     };
-    // Some voices (e.g. Chrome's Google voices) never send word boundaries, so
-    // fall back to estimating each word's length from its letters.
-    const step = i => {
-      if (gotBoundary || i >= toks.length) return;
-      mark(i);
-      timer = setTimeout(() => step(i + 1), (220 + 65 * toks[i].len) / rate);
-    };
-    return say(text, rate, pitch || 1, {
-      onstart: () => { mark(0); timer = setTimeout(() => step(1), (500 + 65 * (toks[0] ? toks[0].len : 0)) / rate); },
-      onboundary: e => {
-        if (e.name && e.name !== 'word') return;
-        gotBoundary = true;
-        clearTimeout(timer);
-        let i = 0;
-        while (i + 1 < toks.length && toks[i + 1].i <= e.charIndex) i++;
-        mark(i);
-      },
-      onend: () => { clearTimeout(timer); if (my === hlToken) words.forEach(w => w.classList.remove('hl')); }
-    });
+    return (async () => {
+      let tokBase = 0;
+      for (let p = 0; p < parts.length; p++) {
+        if (my !== hlToken) return;
+        const sent = parts[p];
+        const sentToks = [];
+        sent.replace(/\S+/g, (m, i) => { sentToks.push({ i, len: m.length }); return m; });
+        let gotBoundary = false, timer;
+        // Some voices (e.g. Chrome's Google voices) never send word boundaries, so
+        // fall back to estimating each word's length from its letters.
+        const step = i => {
+          if (gotBoundary || i >= sentToks.length) return;
+          mark(tokBase + i);
+          timer = setTimeout(() => step(i + 1), (220 + 65 * sentToks[i].len) / rate);
+        };
+        await say(sent, rate, pitch, {
+          onstart: () => { mark(tokBase); timer = setTimeout(() => step(1), (500 + 65 * (sentToks[0] ? sentToks[0].len : 0)) / rate); },
+          onboundary: e => {
+            if (e.name && e.name !== 'word') return;
+            gotBoundary = true;
+            clearTimeout(timer);
+            let i = 0;
+            while (i + 1 < sentToks.length && sentToks[i + 1].i <= e.charIndex) i++;
+            mark(tokBase + i);
+          },
+          onend: () => { clearTimeout(timer); }
+        });
+        tokBase += sentToks.length;
+        if (p < parts.length - 1 && my === hlToken) await new Promise(r => setTimeout(r, 450));
+      }
+      if (my === hlToken) words.forEach(w => w.classList.remove('hl'));
+    })();
   }
 
   // Speak several [target, text, voice] parts in order, highlighting each target.
@@ -234,7 +248,26 @@
   const droidHas = id => taughtCount() >= DROID_PARTS.find(p => p.id === id).at;
   const nextPart = () => DROID_PARTS.find(p => p.at > taughtCount());
   const droidName = () => S.droidName || 'your droid';
-  const droidSay = text => say(text, 0.95, 1.6);
+  const engineerName = () => (S.name || 'Engineer').trim();
+  // Capitalize the first letter of each sentence (display + speech copy).
+  const capSentences = text => String(text).replace(/(^\s*[a-z])|([.!?]\s+[a-z])/g, m => m.toUpperCase());
+  // Split on .!? so TTS can pause between sentences instead of running on.
+  const splitSentences = text => {
+    const s = String(text).trim();
+    if (!s) return [];
+    const parts = [];
+    s.replace(/[^.!?]+(?:[.!?]+(?=\s+\S)|[.!?]*$)/g, m => { const t = m.trim(); if (t) parts.push(t); return m; });
+    return parts.length ? parts : [s];
+  };
+  const droidSay = text => {
+    const parts = splitSentences(text);
+    (async () => {
+      for (let i = 0; i < parts.length; i++) {
+        await say(parts[i], 0.95, 1.6);
+        if (i < parts.length - 1) await new Promise(r => setTimeout(r, 450));
+      }
+    })();
+  };
 
   // Protocol-droid silhouette (C-3PO-like), silver/gunmetal + ONE blue chest plate,
   // unfinished covers / exposed wiring until each part is earned. Original design.
@@ -750,7 +783,7 @@
   // Feedback: set it, then renderItem() shows it and reads it aloud with highlighting.
   // pics: [[soundOrWord, isCorrect], ...] shown under the message.
   function setFb(kind, text, opts) {
-    R.fb = Object.assign({ kind, text }, opts || {});
+    R.fb = Object.assign({ kind, text: capSentences(text) }, opts || {});
     R.fbNew = true;
   }
   function fbHTML(withNext) {
@@ -941,15 +974,15 @@
     if (it.s) {
       const s = it.s, g = it.guess, neg = s.pos === 'end' ? 'does not end with' : 'does not start with';
       if (ok) teachWord(s.g);
-      if (ok && it.right) setFb('right', `Thank you, Maker! ${s.key} ${rel(s)} ${s.g}. Saved to memory.`, { ...droid, pics: [[s, true]] });
+      if (ok && it.right) setFb('right', `Thank you, ${engineerName()}! ${s.key} ${rel(s)} ${s.g}. Saved to memory.`, { ...droid, pics: [[s, true]] });
       else if (ok) setFb('right', `Good catch! ${g.key} ${neg} ${s.g}. ${s.key} does. Saved to memory.`, { ...droid, pics: [[g, false], [s, true]] });
-      else if (it.right) setFb('wrong', `Are you sure, Maker? ${s.key} really ${rel(s)} ${s.g}. Say it slowly.`, { ...droid, pics: [[s, true]] });
+      else if (it.right) setFb('wrong', `Are you sure, ${engineerName()}? ${s.key} really ${rel(s)} ${s.g}. Say it slowly.`, { ...droid, pics: [[s, true]] });
       else setFb('wrong', `Oh dear. I said ${g.key}, but ${g.key} ${neg} ${s.g}. ${s.key} does.`, { ...droid, pics: [[g, false], [s, true]] });
     } else {
       const w = it.w;
-      if (ok && it.right) { teachWord(w.w); setFb('right', `Thank you, Maker! ${w.w}. Saved to memory.`, droid); }
-      else if (ok) { R.state = 'fix'; setFb('right', 'Good catch! I made an error. Please reprogram me, Maker.', droid); }
-      else if (it.right) setFb('wrong', `Are you sure, Maker? I said ${w.w}, and that was right.`, { ...droid, extra: decoderHTML(w) });
+      if (ok && it.right) { teachWord(w.w); setFb('right', `Thank you, ${engineerName()}! ${w.w}. Saved to memory.`, droid); }
+      else if (ok) { R.state = 'fix'; setFb('right', `Good catch! I made an error. Please reprogram me, ${engineerName()}.`, droid); }
+      else if (it.right) setFb('wrong', `Are you sure, ${engineerName()}? I said ${w.w}, and that was right.`, { ...droid, extra: decoderHTML(w) });
       else setFb('wrong', `Oh dear. I said ${it.guess}, but this word is ${w.w}. You missed my mistake.`, { ...droid, extra: decoderHTML(w) });
     }
     renderItem();
@@ -960,7 +993,7 @@
     teachWord(it.w.w);
     if (spoken) { R.spoken++; S.spoken = (S.spoken || 0) + 1; S.xp += 5; }
     R.state = 'right';
-    setFb('right', `${it.w.w}. Memory corrected. Thank you, Maker!`, { voice: 'droid', tip: spoken ? '🎤 It heard you! +5 XP for reading out loud.' : '' });
+    setFb('right', `${it.w.w}. Memory corrected. Thank you, ${engineerName()}!`, { voice: 'droid', tip: spoken ? '🎤 It heard you! +5 XP for reading out loud.' : '' });
     persist();
     beep(true);
     renderItem();
@@ -1187,8 +1220,8 @@
       case 'droid-talk': {
         const np = nextPart();
         return droidSay(taughtCount()
-          ? `Hello, Maker ${S.name}. I am ${droidName()}. I know ${taughtCount()} words and letters.${np ? ` Teach me ${np.at - taughtCount()} more and I get my ${np.name}.` : ' I am fully operational!'}`
-          : `Hello, Maker. I am ${droidName()}. I cannot read yet. Please teach me.`);
+          ? `Hello, ${engineerName()}. I am ${droidName()}. I know ${taughtCount()} words and letters.${np ? ` Teach me ${np.at - taughtCount()} more and I get my ${np.name}.` : ' I am fully operational!'}`
+          : `Hello, ${engineerName()}. I am ${droidName()}. I cannot read yet. Please teach me.`);
       }
       case 'droid-teach': {
         const lv = levelById(Math.min(S.unlocked, LEVELS.length));
@@ -1285,7 +1318,7 @@
       if (!val.trim()) return;
       S.droidName = val.trim().slice(0, 16);
       persist();
-      droidSay(`Hello, Maker. I am ${S.droidName}. I am ready to learn.`);
+      droidSay(`Hello, ${engineerName()}. I am ${S.droidName}. I am ready to learn.`);
       return startRound(curLevel, 'teach');
     }
     if (!R || !val.trim()) return;
